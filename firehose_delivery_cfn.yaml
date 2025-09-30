@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  OrdersFirehoseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: orders-firehose-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: [firehose.amazonaws.com] }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonRedshiftFullAccess
+  OrdersFirehose:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: orders-firehose
+      DeliveryStreamType: DirectPut
+      ExtendedS3DestinationConfiguration:
+        RoleARN: !GetAtt OrdersFirehoseRole.Arn
+        BucketARN: arn:aws:s3:::your-bucket-name
+        BufferingHints: { SizeInMBs: 5, IntervalInSeconds: 60 }
+        ProcessingConfiguration:
+          Enabled: true
+          Processors:
+            - Type: Lambda
+              Parameters:
+                - ParameterName: "LambdaArn"
+                  ParameterValue: arn:aws:lambda:AWS_REGION:ACCOUNT_ID:function:your-transform-lambda
